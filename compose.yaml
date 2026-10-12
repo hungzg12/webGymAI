@@ -1,0 +1,19 @@
+name: gymhung
+services:
+  web:
+    build: ./frontend
+    ports:
+      - "127.0.0.1:${WEB_PORT:-18088}:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+  api:
+    build: ./gymhung-backend
+    environment:
+      # Local HTTP demo only; production requires HTTPS configuration.
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__GymDatabase: "${GYM_DATABASE_CONNECTION:-Server=host.docker.internal,1433;Database=gymhung_demo;User Id=gymhung_docker;Password=CHANGE_ME;Encrypt=True;TrustServerCertificate=True}"
+      Jwt__Key: "${GYM_JWT_KEY:-local-docker-demo-key-change-before-deploy-2026}"
+      Ai__BaseUrl: "${GYM_AI_URL:-http://host.docker.internal:2024/}"
+      Ai__PdfIngestUrl: "${GYM_PDF_URL:-http://host.docker.internal:3000/api/ingest}"
+    restart: unless-stopped

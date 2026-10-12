@@ -1,0 +1,8 @@
+**/bin
+**/obj
+.vs
+.agent-build
+.quality-build
+.small-model-build
+local-*
+**/appsettings.Development.json

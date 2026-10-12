@@ -1,0 +1,33 @@
+# GymHung backend (.NET 9)
+
+Solution `GymHung.sln`: Api (controllers/auth/middleware), Application (DTOs/services/validation), Domain (34 entities), Infrastructure (EF SQL Server mappings). Source namespaces retain GymManagement.Api for compatibility; physical project names are GymHung.
+
+```powershell
+dotnet restore GymHung.sln
+dotnet build GymHung.sln
+dotnet run --project GymHung.Api --launch-profile http
+```
+
+API http://localhost:5042, development Swagger http://localhost:5042/swagger. HTTPS development profile port 7123; production requires HTTPS. Local SDK installed at `C:\Users\hungz\.dotnet\dotnet.exe` (10.0.401). No automatic database creation, migrations, or startup seed. Use provided original SQL and standalone seed command documented in the main README.
+
+`ConnectionStrings__GymDatabase` overrides SQL connection; database must remain gymhung_demo. Production requires `Jwt__Key` (minimum 32 bytes), issuer/audience and frontend CORS origins. Development key is explicitly public/demo-only. Demo credentials: demo.admin / demo.staff / demo.trainer0 / demo.member0, password GymHung@2026 supplied via development seed configuration.
+
+## Contracts
+
+- POST /api/auth/login `{username,password}` supports username or email. Returns token (60 minutes), userId/fullName/role/roles/permissions/memberId/trainerId/profile. GET /api/auth/me returns same session without token. PUT /api/auth/profile `{fullName,email,phone,avatarUrl,gender,dateOfBirth}`. POST /api/auth/change-password `{currentPassword,newPassword}`. POST /api/auth/register-member creates only Member role atomically.
+- GET /api/resources/{SQL-table-name} or /api/{kebab-table-name}: `page>=1&pageSize=1..100&search&sort&direction=asc|desc&dateFrom=yyyy-MM-dd&dateTo=yyyy-MM-dd` plus scalar schema filters (status, memberId, trainerId, etc.). Response `{items,page,pageSize,totalCount}`. SQL Server applies ownership, search/filter, count and pagination. Sort excludes password/provider payload/audit sensitive content. Members search joins Users name/email/phone.
+- POST /api/resources/{table} or PUT /api/workspace/{table}/{id?}: `{draft:{business-fields},userDraft?:{username,email,fullName,phone,password}}`. userDraft required to create a linked account for new Member/Trainer/Staff unless an existing valid account is selected. New account password 8–128 characters, hashed server-side. Updates use userDraft for linked profile changes. Keys are immutable and server controls timestamps/counters/payment provider fields. Compound keys use `firstId:secondId` (UserRoles, RolePermissions). PUT and DELETE resource aliases available. Delete with dependencies returns409.
+- GET /api/workspace retained as authenticated, DB permission and ownership scoped bootstrap for UI lookup references. Use paged resource API for tables.
+- GET /api/dashboard?dateFrom&dateTo totals/series; GET /api/reports/{revenue|members|packages|checkins|maintenance}?dateFrom&dateTo returns `{items:[{label,value}],total}`. Revenue = Completed Payments only, PaidAt date filter; provider transactions never included. Reports enforce underlying module read permission and ownership.
+- Payments are immutable after creation. Electronic creation Pending only. POST /api/payments/{id}/confirm-cash `{amount,transactionCode}` staff permission. Development-only POST /api/payments/{id}/demo-confirm `{amount,transactionCode:"DEMO-unique-code"}` requires payments.write; verifies amount and ownership, serializes writes, repeated identical confirmation is idempotent. Demo adapter is NOT a real VNPay/Momo integration. No unauthenticated real provider callback is exposed.
+- POST /api/ai/conversations/{id}/messages `{message}` persists owned messages with explicit AI demo provider. POST /api/ai/churn/{memberId} produces demo-rules-v1-no-ml score0–100:100*min(1,days-since-checkin/30), no check-in=>30days; High>=70, Medium>=40. POST /api/ai/recommendations/{id}/accept-plan `{confirmed:true,planName,goal,trainerId?,startDate?,endDate?,note?}` derives member ownership from recommendation, stores only after confirmation. Current API uses the local LangGraph service and Ollama qwen3:4b. Permission-scoped exact lookups may answer directly; responses identify lookup vs model source. Explicit requests for a workout roadmap create a reviewable Workout recommendation. No trained churn model is claimed.
+
+BIGINT JSON values and DECIMAL values are invariant strings. DATE=`yyyy-MM-dd`, TIME=24h time, DATETIME2 is Vietnam wall clock (UTC+7, unspecified DateTime kind, second precision); JWT times are UTC. Nullable values remain null. Errors use ProblemDetails status400/401/403/404/409/500; client sees no connection or stack trace. Login rate limit10requests/IP/minute. Credentials/token/API secrets never included in audit payloads or error logs.
+
+## Business integrity
+
+Serializable transactions + SQL Server transaction-owned sp_getapplock guard schedule/booking counts and payments without schema modifications. Bookings reject duplicates/capacity and recount participants on cancellation. Schedules reject overlaps for trainer/room and invalid room capacity. Trainer may only write own assignments. Package registration snapshots catalog price/session count/duration and renewal creates a new row. Attendance unique booking; CheckIns rejects second active visit and checkout before checkin. Package usage now selects an explicit paid MemberPackage and atomically records the CheckIns/Attendance event, session deduction and immutable UsePackage audit linkage. Registration ID is required when more than one eligible registration exists. PT packages are consumed only by attendance for a confirmed booking with an assigned trainer on the schedule date; admission uses a separate non-PT registration. Check-out never debits again. Unlimited registrations retain null RemainingSessions. POST /api/package-usage/check-in accepts {memberId,memberPackageId}; POST /api/package-usage/attendance accepts {bookingId,memberPackageId}. Generic creation routes use the same service. AuditLogs, PaymentTransactions, AIConversationMessages, ChurnPredictions have no public generic writes.
+
+## Verification
+
+`dotnet test GymHung.Tests` runs 8 schema, precision, provider and security projection tests. The final .NET 10 run discovered and passed all 8 tests; see `../docs/BACKEND-VERIFICATION.txt`. Use real SQL API verifier results in `../docs/API-VERIFICATION.json` for tested roles, booking concurrency/payment replay and complete business sequence. Production VNPay/Momo callback validation, real AI provider credentials and HTTPS certificate deployment require actual provider configuration.

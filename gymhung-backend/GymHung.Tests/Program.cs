@@ -1,0 +1,11 @@
+using GymHung.Tests;
+var tests = new ContractsAndSchemaTests();
+tests.Bigint_and_money_survive_exact_json_roundtrip();
+tests.Schema_has_34_tables_and_40_foreign_keys_without_cascade();
+tests.Mapping_preserves_compound_keys_and_schedule_plan_relationship();
+tests.Dto_contains_only_scalar_fields_never_password_hash_or_navigations();
+tests.Demo_provider_explicitly_rejects_amount_mismatch_and_real_codes("DEMO-order-123", 10, 10, true);
+tests.Demo_provider_explicitly_rejects_amount_mismatch_and_real_codes("REAL-order-123", 10, 10, false);
+tests.Demo_provider_explicitly_rejects_amount_mismatch_and_real_codes("DEMO-order-123", 10, 11, false);
+tests.Vietnam_datetime_has_no_implicit_utc_suffix();
+Console.WriteLine("PASS: 8 contract and schema assertions (direct runner).");
