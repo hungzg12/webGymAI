@@ -1,0 +1,1 @@
+import{F as e}from"../../index.js";import{createElement as t,useEffect as n,useRef as r}from"react";var i=new Map;function a(e,t){return e?{...e,...t}:t}function o({providerId:o,segmentMap:s,children:c}){let l=r(null),u=e(),d=a(l.current??(o?i.get(o)??null:null),s);return n(()=>{l.current=d,o&&i.set(o,d)},[d,o]),u?t(u.Provider,{value:d},c):c}export{o as LayoutSegmentProvider};

@@ -1,0 +1,1 @@
+import{t as e}from"./framework~index~page~layout~page~app-page-cache-render~app-page-cache~seed-cache~app-route-~fubas3yb-cEDUQVTe.js";import{t}from"./gym-app-D_op0jMo.js";var n=e();function r(){return(0,n.jsx)(t,{})}export{r as default};

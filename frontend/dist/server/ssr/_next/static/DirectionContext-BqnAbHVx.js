@@ -1,0 +1,1 @@
+import*as e from"react";var t=e.createContext(void 0);function n(){return e.useContext(t)?.direction??`ltr`}export{n as t};
